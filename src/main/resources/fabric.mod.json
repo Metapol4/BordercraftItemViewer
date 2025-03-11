@@ -2,14 +2,14 @@
 	"schemaVersion": 1,
 	"id": "bordercraftitemviewer",
 	"version": "${version}",
-	"name": "BordercraftItemViewer",
-	"description": "This is an example description! Tell everyone what your mod is about!",
+	"name": "Bordercraft Item Viewer",
+	"description": "A mod that displays all the items that have not yet entered this player's inventory. Made for bordercraft, but works on vanilla too.",
 	"authors": [
 		"Métapol | Bas Étage"
 	],
 	"contact": {
-		"homepage": "https://fabricmc.net/",
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"homepage": "https://github.com/Metapol4/BordercraftItemViewer",
+		"sources": "https://github.com/Metapol4/BordercraftItemViewer"
 	},
 	"license": "CC0-1.0",
 	"icon": "assets/bordercraftitemviewer/icon.png",
