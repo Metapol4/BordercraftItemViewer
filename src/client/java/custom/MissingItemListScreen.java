@@ -30,10 +30,6 @@ public class MissingItemListScreen extends Screen {
 
     @Override
     protected void init() {
-        StatsScreen tmp = new StatsScreen(this, MinecraftClient.getInstance().player.getStatHandler());
-        MinecraftClient.getInstance().setScreen(tmp);
-        tmp.close();
-
         ButtonWidget buttonWidget = ButtonWidget.builder(Text.of("Close"), (btn) -> {
             // When the button is clicked, we can display a toast to the screen.
             MinecraftClient.getInstance().setScreen(null);
