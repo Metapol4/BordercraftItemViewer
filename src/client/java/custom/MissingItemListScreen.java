@@ -86,6 +86,8 @@ public class MissingItemListScreen extends Screen {
         excludeList.add(Items.STRUCTURE_BLOCK);
         excludeList.add(Items.STRUCTURE_VOID);
         excludeList.add(Items.DEBUG_STICK);
+        excludeList.add(Items.VAULT);
+        excludeList.add(Items.REINFORCED_DEEPSLATE);
 
         excludeList.add(Items.ARMADILLO_SPAWN_EGG);
         excludeList.add(Items.ALLAY_SPAWN_EGG);
@@ -169,23 +171,27 @@ public class MissingItemListScreen extends Screen {
         excludeList.add(Items.ZOMBIE_VILLAGER_SPAWN_EGG);
         excludeList.add(Items.ZOMBIFIED_PIGLIN_SPAWN_EGG);
 
-        List<Item> items = Registries.ITEM.stream().toList();
+        List<Item> items = new java.util.ArrayList<>(Registries.ITEM.stream().toList());
+
+        items.removeAll(excludeList);
         LOGGER.info("items: " + String.valueOf(items.size()));
-        for (int i = 0; i < width / 16; i++) {
-            for (int j = 0; j < height / 16; j++) {
-                int index = i * (height / 16) + j;
+        int size = 16;
+        for (int i = 0; i < width / size; i++) {
+            for (int j = 0; j < height / size; j++) {
+                int index = i * (height / size) + j;
                 if (items.size() <= index)
                     break;
                 Item item = items.get(index);
-                if (excludeList.contains(item))
+                if (excludeList.contains(item)) {
                     continue;
-                ItemViewerWidget itemViewerWidget = new ItemViewerWidget(i * 16, j * 16, 16, 16, Text.empty(), item);
+                }
+
+                ItemViewerWidget itemViewerWidget = new ItemViewerWidget(i * size, j * size, size, size, Text.empty(), item);
                 this.addDrawableChild(itemViewerWidget);
                 LOGGER.info("drew: " + item.toString());
                 LOGGER.info("id: " + index);
             }
         }
-
     }
 
     @Override
