@@ -30,7 +30,7 @@ public abstract class MixinInventory extends RecipeBookScreen<PlayerScreenHandle
     @Inject(method = "init", at = @At("RETURN"))
     public void onInit(CallbackInfo ci)
     {
-        ButtonWidget buttonWidget = ButtonWidget.builder(Text.of("Hello World"), (btn) -> {
+        ButtonWidget buttonWidget = ButtonWidget.builder(Text.of("Open Missing Items List"), (btn) -> {
             MinecraftClient.getInstance().setScreen(
                     new MissingItemListScreen(Text.empty())
             );

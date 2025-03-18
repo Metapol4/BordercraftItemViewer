@@ -27,13 +27,14 @@ public class MissingItemListScreen extends Screen {
 
     private final static Logger LOGGER =
             Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
+    private int ItemCount = 0;
 
     @Override
     protected void init() {
         ButtonWidget buttonWidget = ButtonWidget.builder(Text.of("Close"), (btn) -> {
             // When the button is clicked, we can display a toast to the screen.
             MinecraftClient.getInstance().setScreen(null);
-        }).dimensions(40, 40, 120, 20).build();
+        }).dimensions(width - 120, height - 20, 120, 20).build();
         // x, y, width, height
         // It's recommended to use the fixed height of 20 to prevent rendering issues with the button
         // textures.
@@ -194,16 +195,14 @@ public class MissingItemListScreen extends Screen {
                 LOGGER.info("id: " + index);
             }
         }
+        ItemCount = items.size();
+
     }
 
     @Override
     public void render(DrawContext context, int mouseX, int mouseY, float delta) {
         super.render(context, mouseX, mouseY, delta);
-
-        // Minecraft doesn't have a "label" widget, so we'll have to draw our own text.
-        // We'll subtract the font height from the Y position to make the text appear above the button.
-        // Subtracting an extra 10 pixels will give the text some padding.
-        // textRenderer, text, x, y, color, hasShadow
-        context.drawText(this.textRenderer, "Special Button", 40, 40 - this.textRenderer.fontHeight - 10, 0xFFFFFFFF, true);
+        String text = "Items Remaining: " + ItemCount;
+        context.drawText(this.textRenderer, text, width - 120, 0, 0xFFFFFFFF, true);
     }
 }
