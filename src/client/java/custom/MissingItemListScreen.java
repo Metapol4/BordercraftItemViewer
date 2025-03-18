@@ -8,19 +8,28 @@ import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
+import net.minecraft.client.gui.screen.ingame.CreativeInventoryScreen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
+import net.minecraft.client.search.SearchManager;
+import net.minecraft.client.search.SearchProvider;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
 import net.minecraft.registry.Registries;
+import net.minecraft.registry.entry.RegistryEntryList;
+import net.minecraft.registry.tag.TagKey;
 import net.minecraft.stat.StatHandler;
 import net.minecraft.stat.StatType;
 import net.minecraft.stat.Stats;
 import net.minecraft.text.Text;
+import net.minecraft.util.Identifier;
 
 import java.util.*;
+import java.util.function.Predicate;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 
 public class MissingItemListScreen extends Screen {
@@ -30,8 +39,11 @@ public class MissingItemListScreen extends Screen {
 
     private final static Logger LOGGER =
             Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
+    private final Set<TagKey<Item>> searchResultTags = new HashSet();
+
     Set<Item> excludeList = Sets.newIdentityHashSet();
-    ObjectSet<Collection<Item>> searchResultsCollection;
+    List<ItemViewerWidget> itemViewerWidgets;
+    List<Item> searchResultsItemStacks;
     private int ItemCount = 0;
     private TextFieldWidget searchField;
     private boolean searching;
@@ -49,23 +61,76 @@ public class MissingItemListScreen extends Screen {
 
         // Register the button widget.
         this.addDrawableChild(buttonWidget);
-        StatHandler statHandler;
-        statHandler = MinecraftClient.getInstance().player.getStatHandler();
-        List<StatType<Item>> itemStatTypes;
-        itemStatTypes = Lists.newArrayList(new StatType[]{Stats.BROKEN, Stats.CRAFTED, Stats.USED, Stats.PICKED_UP, Stats.DROPPED});
-        for (Item item : Registries.ITEM) {
-            boolean bl = false;
-            for (StatType<Item> statType : itemStatTypes) {
-                if (statType.hasStat(item) && statHandler.getStat(statType.getOrCreateStat(item)) > 0) {
-                    bl = true;
-                }
-            }
+        FillExcludeList();
 
-            if (bl) {
-                excludeList.add(item);
+        List<Item> items = MakeItemsList();
+
+        ItemCount = items.size();
+        // RenderItems();
+        CreateItemWidgets();
+
+
+        Objects.requireNonNull(this.client.textRenderer);
+        TextRenderer txtRender = this.client.textRenderer;
+        String string = this.searchField != null ? this.searchField.getText() : "";
+        Text text = Text.of("Search...");
+
+        this.searchField = new TextFieldWidget(txtRender, width - 120, 20, 81, 14, Text.translatable("itemGroup.search"));
+        this.searchField.setMaxLength(50);
+        this.searchField.setVisible(true);
+        this.searchField.setEditableColor(16777215);
+        this.searchField.setText(string);
+        this.searchField.setPlaceholder(text);
+    }
+
+    private void RenderItems(/*DrawContext context*/) {
+        EmptyItemWidgets();
+        List<Item> items = MakeItemsList();
+        int size = 16;
+        for (int i = 0; i < width / size; i++) {
+            for (int j = 0; j < height / size; j++) {
+                int index = i * (height / size) + j;
+                if (index >= items.size() || index >= itemViewerWidgets.size())
+                    break;
+                Item item = items.get(index);
+                if (excludeList.contains(item)) {
+                    continue;
+                }
+                ItemViewerWidget itemViewerWidget = itemViewerWidgets.get(index);
+                itemViewerWidget.SetItem(item);
+                // itemViewerWidget
+                //ItemViewerWidget itemViewerWidget = new ItemViewerWidget(i * size, j * size, size, size, Text.empty(), item);
             }
         }
+    }
 
+    private void EmptyItemWidgets() {
+        for (ItemViewerWidget itemViewerWidget : itemViewerWidgets) {
+            itemViewerWidget.SetItem(null);
+        }
+    }
+
+    private void CreateItemWidgets(/*DrawContext context*/) {
+        List<Item> items = MakeItemsList();
+        itemViewerWidgets = Lists.newArrayListWithCapacity(items.size());
+        int size = 16;
+        for (int i = 0; i < width / size; i++) {
+            for (int j = 0; j < height / size; j++) {
+                int index = i * (height / size) + j;
+                if (items.size() <= index)
+                    break;
+                Item item = items.get(index);
+                if (excludeList.contains(item)) {
+                    continue;
+                }
+                ItemViewerWidget itemViewer = new ItemViewerWidget(i * size, j * size, size, size, Text.empty(), null);
+                itemViewerWidgets.add(itemViewer);
+                this.addDrawableChild(itemViewer);
+            }
+        }
+    }
+
+    private void FillExcludeList() {
 
         excludeList.add(Items.AIR);
         excludeList.add(Items.BEDROCK);
@@ -180,40 +245,20 @@ public class MissingItemListScreen extends Screen {
         excludeList.add(Items.ZOMBIE_VILLAGER_SPAWN_EGG);
         excludeList.add(Items.ZOMBIFIED_PIGLIN_SPAWN_EGG);
 
-
-        List<Item> items = MakeItemsList();
-
-        ItemCount = items.size();
-        RenderItems();
-
-        Objects.requireNonNull(this.client.textRenderer);
-        TextRenderer txtRender = this.client.textRenderer;
-        String string = this.searchField != null ? this.searchField.getText() : "";
-        Text text = Text.of("Search...");
-
-        this.searchField = new TextFieldWidget(txtRender, width - 120, 20, 81, 14, Text.translatable("itemGroup.search"));
-        this.searchField.setMaxLength(50);
-        this.searchField.setVisible(true);
-        this.searchField.setEditableColor(16777215);
-        this.searchField.setText(string);
-        this.searchField.setPlaceholder(text);
-    }
-
-    private void RenderItems() {
-        List<Item> items = MakeItemsList();
-        int size = 16;
-        for (int i = 0; i < width / size; i++) {
-            for (int j = 0; j < height / size; j++) {
-                int index = i * (height / size) + j;
-                if (items.size() <= index)
-                    break;
-                Item item = items.get(index);
-                if (excludeList.contains(item)) {
-                    continue;
+        StatHandler statHandler;
+        statHandler = MinecraftClient.getInstance().player.getStatHandler();
+        List<StatType<Item>> itemStatTypes;
+        itemStatTypes = Lists.newArrayList(new StatType[]{Stats.BROKEN, Stats.CRAFTED, Stats.USED, Stats.PICKED_UP, Stats.DROPPED});
+        for (Item item : Registries.ITEM) {
+            boolean bl = false;
+            for (StatType<Item> statType : itemStatTypes) {
+                if (statType.hasStat(item) && statHandler.getStat(statType.getOrCreateStat(item)) > 0) {
+                    bl = true;
                 }
+            }
 
-                ItemViewerWidget itemViewerWidget = new ItemViewerWidget(i * size, j * size, size, size, Text.empty(), item);
-                this.addDrawableChild(itemViewerWidget);
+            if (bl) {
+                excludeList.add(item);
             }
         }
     }
@@ -221,8 +266,8 @@ public class MissingItemListScreen extends Screen {
     private List<Item> MakeItemsList() {
         List<Item> items = new java.util.ArrayList<>(Registries.ITEM.stream().toList());
         items.removeAll(excludeList);
-        if (searchResultsCollection != null)
-            items.removeIf((resultCollection) -> !searchResultsCollection.contains(resultCollection));
+        if (searchResultsItemStacks != null)
+            items.removeIf((resultCollection) -> !searchResultsItemStacks.contains(resultCollection));
         return items;
     }
 
@@ -232,10 +277,13 @@ public class MissingItemListScreen extends Screen {
         String text = "Items Remaining: " + ItemCount;
         context.drawText(this.textRenderer, text, width - 120, 0, 0xFFFFFFFF, true);
         searchField.render(context, mouseX, mouseY, delta);
+        RenderItems();
     }
 
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        if (keyCode == 27)
+            return super.keyPressed(keyCode, scanCode, modifiers);
         this.searching = false;
         if (this.searchField.keyPressed(keyCode, scanCode, modifiers)) {
             this.refreshSearchResults();
@@ -247,7 +295,7 @@ public class MissingItemListScreen extends Screen {
             this.searchField.setFocused(true);
             return true;
         } else {
-            return false;
+            return super.keyPressed(keyCode, scanCode, modifiers);
         }
     }
 
@@ -271,10 +319,38 @@ public class MissingItemListScreen extends Screen {
     }
 
     private void refreshSearchResults() {
+        if (searchResultsItemStacks == null) {
+            searchResultsItemStacks = new ArrayList<>();
+        }
+
+        searchResultsItemStacks.clear();
         String string = this.searchField.getText().toLowerCase(Locale.ROOT);
-        // list2.removeIf((resultCollection) -> !objectSet.contains(resultCollection));
-        ClientPlayNetworkHandler clientPlayNetworkHandler = this.client.getNetworkHandler();
-        searchResultsCollection = new ObjectLinkedOpenHashSet(clientPlayNetworkHandler.getSearchManager().getRecipeOutputReloadFuture().findAll(string.toLowerCase(Locale.ROOT)));
+
+        List<Item> allItems = new java.util.ArrayList<>(Registries.ITEM.stream().toList());
+        for (Item item : allItems) {
+            if (item.toString().contains(string))
+                searchResultsItemStacks.add(item);
+        }
+        LOGGER.info("Found item count: " + String.valueOf(searchResultsItemStacks.size()));
+        LOGGER.info("with search: " + string);
+    }
+
+
+    private void searchForTags(String id) {
+        int i = id.indexOf(58);
+        Predicate<Identifier> predicate;
+        if (i == -1) {
+            predicate = (idx) -> idx.getPath().contains(id);
+        } else {
+            String string = id.substring(0, i).trim();
+            String string2 = id.substring(i + 1).trim();
+            predicate = (idx) -> idx.getNamespace().contains(string) && idx.getPath().contains(string2);
+        }
+
+        Stream var10000 = Registries.ITEM.streamTags().map(RegistryEntryList.Named::getTag).filter((tag) -> predicate.test(tag.id()));
+        Set var10001 = this.searchResultTags;
+        Objects.requireNonNull(var10001);
+        var10000.forEach(var10001::add);
     }
 
     @Override

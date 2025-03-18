@@ -23,6 +23,21 @@ public class ItemViewerWidget extends ClickableWidget {
 
     @Override
     protected void renderWidget(DrawContext context, int mouseX, int mouseY, float delta) {
+        /*Identifier texture = Identifier.of("minecraft", "container/slot");
+        context.drawGuiTexture(RenderLayer::getGuiTextured, texture, getX(), getY(), 18, 18);
+        context.drawItemWithoutEntity(this.item.getDefaultStack(), getX() + 1, getY() + 1);
+        if (isHovered()) {
+            TextRenderer textRenderer;
+            textRenderer = MinecraftClient.getInstance().textRenderer;
+            context.drawTooltip(textRenderer, item.getName(), mouseX, mouseY, (Identifier) item.getComponents().get(DataComponentTypes.TOOLTIP_STYLE));
+        }*/
+    DrawItem(context, mouseX, mouseY, delta);
+    }
+
+    public void DrawItem(DrawContext context, int mouseX, int mouseY, float delta) {
+        if(this.item == null)
+            return;
+
         Identifier texture = Identifier.of("minecraft", "container/slot");
         context.drawGuiTexture(RenderLayer::getGuiTextured, texture, getX(), getY(), 18, 18);
         context.drawItemWithoutEntity(this.item.getDefaultStack(), getX() + 1, getY() + 1);
@@ -31,7 +46,10 @@ public class ItemViewerWidget extends ClickableWidget {
             textRenderer = MinecraftClient.getInstance().textRenderer;
             context.drawTooltip(textRenderer, item.getName(), mouseX, mouseY, (Identifier) item.getComponents().get(DataComponentTypes.TOOLTIP_STYLE));
         }
+    }
 
+    public void SetItem(Item item){
+        this.item = item;
     }
 
 
