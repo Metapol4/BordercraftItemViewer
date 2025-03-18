@@ -2,11 +2,15 @@ package custom;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
+import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.screen.StatsScreen;
 import net.minecraft.client.gui.widget.ButtonWidget;
+import net.minecraft.client.gui.widget.TextFieldWidget;
+import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.item.Item;
 import net.minecraft.item.Items;
 import net.minecraft.registry.Registries;
@@ -15,8 +19,7 @@ import net.minecraft.stat.StatType;
 import net.minecraft.stat.Stats;
 import net.minecraft.text.Text;
 
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.logging.Logger;
 
 
@@ -27,7 +30,12 @@ public class MissingItemListScreen extends Screen {
 
     private final static Logger LOGGER =
             Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
+    Set<Item> excludeList = Sets.newIdentityHashSet();
+    ObjectSet<Collection<Item>> searchResultsCollection;
     private int ItemCount = 0;
+    private TextFieldWidget searchField;
+    private boolean searching;
+
 
     @Override
     protected void init() {
@@ -41,8 +49,6 @@ public class MissingItemListScreen extends Screen {
 
         // Register the button widget.
         this.addDrawableChild(buttonWidget);
-
-        Set<Item> excludeList = Sets.newIdentityHashSet();
         StatHandler statHandler;
         statHandler = MinecraftClient.getInstance().player.getStatHandler();
         List<StatType<Item>> itemStatTypes;
@@ -174,10 +180,27 @@ public class MissingItemListScreen extends Screen {
         excludeList.add(Items.ZOMBIE_VILLAGER_SPAWN_EGG);
         excludeList.add(Items.ZOMBIFIED_PIGLIN_SPAWN_EGG);
 
-        List<Item> items = new java.util.ArrayList<>(Registries.ITEM.stream().toList());
 
-        items.removeAll(excludeList);
-        LOGGER.info("items: " + String.valueOf(items.size()));
+        List<Item> items = MakeItemsList();
+
+        ItemCount = items.size();
+        RenderItems();
+
+        Objects.requireNonNull(this.client.textRenderer);
+        TextRenderer txtRender = this.client.textRenderer;
+        String string = this.searchField != null ? this.searchField.getText() : "";
+        Text text = Text.of("Search...");
+
+        this.searchField = new TextFieldWidget(txtRender, width - 120, 20, 81, 14, Text.translatable("itemGroup.search"));
+        this.searchField.setMaxLength(50);
+        this.searchField.setVisible(true);
+        this.searchField.setEditableColor(16777215);
+        this.searchField.setText(string);
+        this.searchField.setPlaceholder(text);
+    }
+
+    private void RenderItems() {
+        List<Item> items = MakeItemsList();
         int size = 16;
         for (int i = 0; i < width / size; i++) {
             for (int j = 0; j < height / size; j++) {
@@ -191,12 +214,16 @@ public class MissingItemListScreen extends Screen {
 
                 ItemViewerWidget itemViewerWidget = new ItemViewerWidget(i * size, j * size, size, size, Text.empty(), item);
                 this.addDrawableChild(itemViewerWidget);
-                LOGGER.info("drew: " + item.toString());
-                LOGGER.info("id: " + index);
             }
         }
-        ItemCount = items.size();
+    }
 
+    private List<Item> MakeItemsList() {
+        List<Item> items = new java.util.ArrayList<>(Registries.ITEM.stream().toList());
+        items.removeAll(excludeList);
+        if (searchResultsCollection != null)
+            items.removeIf((resultCollection) -> !searchResultsCollection.contains(resultCollection));
+        return items;
     }
 
     @Override
@@ -204,5 +231,62 @@ public class MissingItemListScreen extends Screen {
         super.render(context, mouseX, mouseY, delta);
         String text = "Items Remaining: " + ItemCount;
         context.drawText(this.textRenderer, text, width - 120, 0, 0xFFFFFFFF, true);
+        searchField.render(context, mouseX, mouseY, delta);
+    }
+
+    @Override
+    public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
+        this.searching = false;
+        if (this.searchField.keyPressed(keyCode, scanCode, modifiers)) {
+            this.refreshSearchResults();
+            return true;
+        } /*else if (this.searchField.isFocused() && this.searchField.isVisible()) {
+            return true;
+        }*/ else if (this.client.options.chatKey.matchesKey(keyCode, scanCode) && !this.searchField.isFocused()) {
+            this.searching = true;
+            this.searchField.setFocused(true);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    @Override
+    public boolean keyReleased(int keyCode, int scanCode, int modifiers) {
+        this.searching = false;
+        return super.keyReleased(keyCode, scanCode, modifiers);
+    }
+
+    @Override
+    public boolean charTyped(char chr, int modifiers) {
+        if (this.searching) {
+            return false;
+        }
+        if (this.searchField.charTyped(chr, modifiers)) {
+            this.refreshSearchResults();
+            return true;
+        } else {
+            return super.charTyped(chr, modifiers);
+        }
+    }
+
+    private void refreshSearchResults() {
+        String string = this.searchField.getText().toLowerCase(Locale.ROOT);
+        // list2.removeIf((resultCollection) -> !objectSet.contains(resultCollection));
+        ClientPlayNetworkHandler clientPlayNetworkHandler = this.client.getNetworkHandler();
+        searchResultsCollection = new ObjectLinkedOpenHashSet(clientPlayNetworkHandler.getSearchManager().getRecipeOutputReloadFuture().findAll(string.toLowerCase(Locale.ROOT)));
+    }
+
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (this.searchField != null) {
+            if (this.searchField.mouseClicked(mouseX, mouseY, button)) {
+                this.searchField.setFocused(true);
+                return true;
+            }
+
+            this.searchField.setFocused(false);
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
     }
 }
