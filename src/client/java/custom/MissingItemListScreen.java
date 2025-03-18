@@ -88,6 +88,8 @@ public class MissingItemListScreen extends Screen {
         excludeList.add(Items.DEBUG_STICK);
         excludeList.add(Items.VAULT);
         excludeList.add(Items.REINFORCED_DEEPSLATE);
+        excludeList.add(Items.KNOWLEDGE_BOOK);
+
 
         excludeList.add(Items.ARMADILLO_SPAWN_EGG);
         excludeList.add(Items.ALLAY_SPAWN_EGG);
