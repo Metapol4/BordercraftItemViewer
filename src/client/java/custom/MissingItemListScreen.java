@@ -2,21 +2,16 @@ package custom;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Sets;
-import it.unimi.dsi.fastutil.objects.ObjectLinkedOpenHashSet;
-import it.unimi.dsi.fastutil.objects.ObjectSet;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.font.TextRenderer;
 import net.minecraft.client.gui.DrawContext;
 import net.minecraft.client.gui.screen.Screen;
-import net.minecraft.client.gui.screen.ingame.CreativeInventoryScreen;
 import net.minecraft.client.gui.widget.ButtonWidget;
 import net.minecraft.client.gui.widget.TextFieldWidget;
-import net.minecraft.client.network.ClientPlayNetworkHandler;
-import net.minecraft.client.search.SearchManager;
-import net.minecraft.client.search.SearchProvider;
+import net.minecraft.item.FilledMapItem;
 import net.minecraft.item.Item;
-import net.minecraft.item.ItemStack;
 import net.minecraft.item.Items;
+import net.minecraft.network.packet.c2s.play.ClientStatusC2SPacket;
 import net.minecraft.registry.Registries;
 import net.minecraft.registry.entry.RegistryEntryList;
 import net.minecraft.registry.tag.TagKey;
@@ -48,7 +43,6 @@ public class MissingItemListScreen extends Screen {
     private TextFieldWidget searchField;
     private boolean searching;
 
-
     @Override
     protected void init() {
         ButtonWidget buttonWidget = ButtonWidget.builder(Text.of("Close"), (btn) -> {
@@ -61,6 +55,8 @@ public class MissingItemListScreen extends Screen {
 
         // Register the button widget.
         this.addDrawableChild(buttonWidget);
+        this.client.getNetworkHandler().sendPacket(new ClientStatusC2SPacket(ClientStatusC2SPacket.Mode.REQUEST_STATS));
+
         FillExcludeList();
 
         List<Item> items = MakeItemsList();
@@ -68,7 +64,6 @@ public class MissingItemListScreen extends Screen {
         ItemCount = items.size();
         // RenderItems();
         CreateItemWidgets();
-
 
         Objects.requireNonNull(this.client.textRenderer);
         TextRenderer txtRender = this.client.textRenderer;
@@ -85,6 +80,7 @@ public class MissingItemListScreen extends Screen {
 
     private void RenderItems(/*DrawContext context*/) {
         EmptyItemWidgets();
+        FillExcludeList();
         List<Item> items = MakeItemsList();
         int size = 16;
         for (int i = 0; i < width / size; i++) {
@@ -131,7 +127,8 @@ public class MissingItemListScreen extends Screen {
     }
 
     private void FillExcludeList() {
-
+        if(excludeList != null)
+            excludeList.clear();
         excludeList.add(Items.AIR);
         excludeList.add(Items.BEDROCK);
         excludeList.add(Items.BUDDING_AMETHYST);
@@ -246,7 +243,7 @@ public class MissingItemListScreen extends Screen {
         excludeList.add(Items.ZOMBIFIED_PIGLIN_SPAWN_EGG);
 
         StatHandler statHandler;
-        statHandler = MinecraftClient.getInstance().player.getStatHandler();
+        statHandler = this.client.player.getStatHandler(); //MinecraftClient.getInstance().player.getStatHandler();
         List<StatType<Item>> itemStatTypes;
         itemStatTypes = Lists.newArrayList(new StatType[]{Stats.BROKEN, Stats.CRAFTED, Stats.USED, Stats.PICKED_UP, Stats.DROPPED});
         for (Item item : Registries.ITEM) {
